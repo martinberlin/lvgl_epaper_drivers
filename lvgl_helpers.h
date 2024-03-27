@@ -18,6 +18,12 @@ extern "C" {
 #include "lvgl_tft/disp_driver.h"
 #include "lvgl_touch/touch_driver.h"
 
+#define DISPLAY_WIDTH 1024
+#define DISPLAY_HEIGHT 768
+/* Backward compatibility for LV_HOR_RES_MAX & LV_VER_RES_MAX */
+#define LV_HOR_RES_MAX DISPLAY_WIDTH
+#define LV_VER_RES_MAX DISPLAY_HEIGHT
+
 /*********************
  *      DEFINES
  *********************/

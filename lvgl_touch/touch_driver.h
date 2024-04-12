@@ -38,6 +38,8 @@ extern "C" {
 #include "gt911.h"
 #elif defined (CONFIG_LV_TOUCH_CONTROLLER_TT21100)
 #include "tt21100.h"
+#elif defined (CONFIG_LV_TOUCH_CONTROLLER_TMA445)
+#include "tma445.h"
 #endif
 
 /*********************

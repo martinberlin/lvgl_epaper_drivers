@@ -28,8 +28,8 @@
 #include "driver/gpio.h"
 #include <driver/i2c.h>
 
-//CONFIG_LV_TOUCH_I2C_SDA
-//CONFIG_LV_TOUCH_I2C_SCL
+QueueHandle_t touch_queue = NULL;
+
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
 #include <lvgl.h>
 #else
@@ -92,6 +92,8 @@ struct cyttsp_xydata {
 	uint16_t y2 __attribute__ ((packed));
 	uint8_t z2;
 };
+
+struct cyttsp_xydata xy_data;
 
 struct cyttsp_bootloader_data {
 	uint8_t bl_file;
@@ -244,7 +246,6 @@ static void touch_INT(void* arg)
             //printf("GPIO[%"PRIu32"] intr, val: %d\n", io_num, gpio_get_level(io_num));
             /* get event data from CYTTSP device */
             int retval;
-            struct cyttsp_xydata xy_data;
             retval = i2c_read_reg(CY_REG_BASE, &xy_data, sizeof(xy_data));
             if (retval < 0) {
 		        printf("%s: Error, fail to read device on host interface bus\n", __func__);
@@ -255,12 +256,11 @@ static void touch_INT(void* arg)
             if (touch) {
                 xy_data.x1 = be16_to_cpu(xy_data.x1);
                 xy_data.y1 = be16_to_cpu(xy_data.y1);
-                printf("Tint x1:%d y1:%d z1:%d\n", xy_data.x1,xy_data.y1,xy_data.z1);
+            if (xQueueSend( touch_queue, &xy_data, ( TickType_t ) 0 ) == pdTRUE) {
+                // The message was sent successfully
+            } else {
+                ESP_LOGW("touch INT", "Could not add xy_data in queue");
             }
-            if (touch == 2) {
-                xy_data.x2 = be16_to_cpu(xy_data.x2);
-                xy_data.y2 = be16_to_cpu(xy_data.y2);
-                printf("Tint x2:%d y2:%d z2:%d\n", xy_data.x2,xy_data.y2,xy_data.z2);
             }
         }
     }
@@ -314,14 +314,6 @@ void touchStuff() {
     struct cyttsp_xydata xy_data;
     printf("%s set operational mode\n",__func__);
 	memset(&(xy_data), 0, sizeof(xy_data));
-
-    // Maybe not needed?
-    /* retval = _cyttsp_hndshk_n_write(cmd);
-    if (retval < 0) {
-		printf("%s: Failed writing block data, err:%d\n",
-			__func__, retval);
-    }
-    _cyttsp_hndshk(); */
     /* wait for TTSP Device to complete switch to Operational mode */
 	DELAY(20);
     retval = i2c_read_reg(CY_REG_BASE, &xy_data, sizeof(xy_data));
@@ -350,18 +342,17 @@ void tma445_init(uint8_t dev_addr)
     gpio_config(&io_conf);
     //create a queue to handle gpio event from isr
     gpio_evt_queue = xQueueCreate(10, sizeof(uint8_t));
+    touch_queue = xQueueCreate(64, sizeof(xy_data));
 
     //i2c_master_init(); // I2C is already started by LVGL
 
     // Setup interrupt for this IO that goes low on the interrupt
-    /* gpio_set_intr_type(TS_INT, GPIO_INTR_NEGEDGE);
+    gpio_set_intr_type(TS_INT, GPIO_INTR_NEGEDGE);
     gpio_install_isr_service(0);
     gpio_isr_handler_add(TS_INT, gpio_isr_handler, (void *)TS_INT);
     // INT detection task
     xTaskCreatePinnedToCore(touch_INT, TAG, configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
-     */
-    
-    
+     
     // Start I2C scanner task
     //xTaskCreatePinnedToCore(i2cscanner, TAG, configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
     resetTouch();
@@ -376,33 +367,16 @@ void tma445_init(uint8_t dev_addr)
  */
 bool tma445_read(lv_indev_drv_t *drv, lv_indev_data_t *data)
 {
-    
-   /* get event data from CYTTSP device */
-   if (gpio_get_level(TS_INT) == 1) {
-
-   
-    struct cyttsp_xydata xy_data;
-    int retval = i2c_read_reg(CY_REG_BASE, &xy_data, sizeof(xy_data));
-    if (retval < 0) {
-        printf("%s: Error, fail to read device on host interface bus\n", __func__);
-    }
-    /* provide flow control handshake */
-    _cyttsp_hndshk();
-    int touch = GET_NUM_TOUCHES(xy_data.tt_stat);
-    if (touch) {
-        xy_data.x1 = be16_to_cpu(xy_data.x1);
-        xy_data.y1 = be16_to_cpu(xy_data.y1);
-
+    /* Read from the touch Queue */
+    if( xQueueReceive(touch_queue, &xy_data, ( TickType_t ) 0 ) ) {
         data->state = LV_INDEV_STATE_PR;
         data->point.y = 768 - xy_data.x1;
         data->point.x = xy_data.y1;
-        printf("X:%d Y:%d\n", data->point.x, data->point.y);
+        printf("qR X:%d Y:%d\n", data->point.x, data->point.y);
     } else {
         data->state = LV_INDEV_STATE_REL;
         data->point.x = -1;
         data->point.y = -1;
-    }
-
     }
     return false;
 }

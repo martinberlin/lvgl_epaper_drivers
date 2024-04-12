@@ -21,8 +21,8 @@ extern "C" {
 #define DISPLAY_WIDTH 1024
 #define DISPLAY_HEIGHT 768
 /* Backward compatibility for LV_HOR_RES_MAX & LV_VER_RES_MAX */
-#define LV_HOR_RES_MAX DISPLAY_WIDTH
-#define LV_VER_RES_MAX DISPLAY_HEIGHT
+#define LV_HOR_RES_MAX 1024
+#define LV_VER_RES_MAX 768
 
 /*********************
  *      DEFINES

@@ -47,9 +47,11 @@ QueueHandle_t touch_queue = NULL;
 #endif
 
 #define TS_INT  3
-#define TS_RES  9
+#define TS_RES  -1
 
 #define TOUCH_ADDR 0x24
+// Adjust to your desired level. Too large might record many seconds which is bad for UX
+#define TOUCH_QUEUE_LENGTH 15
 
 #define CY_REG_BASE         	0x00
 #define GET_NUM_TOUCHES(x)     	((x) & 0x0F)
@@ -64,7 +66,7 @@ QueueHandle_t touch_queue = NULL;
 #define CY_OPERATE_MODE    		0x00
 #define CY_SOFT_RESET_MODE      0x01
 #define CY_LOW_POWER         	0x04 // Non used for now
-#define CY_HNDSHK_BIT     0x80
+#define CY_HNDSHK_BIT           0x80
 
 // I2C common protocol defines
 #define WRITE_BIT                          I2C_MASTER_WRITE /*!< I2C master write */
@@ -328,21 +330,23 @@ void touchStuff() {
  */
 void tma445_init(uint8_t dev_addr)
 {
+    // It seems there is no need to RESET
+    #if TS_RES != -1
     gpio_set_direction(TS_RES, GPIO_MODE_OUTPUT);
+    gpio_set_pull_mode(TS_RES, GPIO_PULLUP_ONLY);
+    resetTouch();
+    #endif
     //zero-initialize the config structure.
     gpio_config_t io_conf = {};
-    //interrupt of rising edge
-    io_conf.intr_type = GPIO_INTR_POSEDGE;
-    //bit mask of the pins, use GPIO4/5 here
+    io_conf.intr_type = GPIO_INTR_NEGEDGE;
     io_conf.pin_bit_mask = TS_INT;
-    //set as input mode
     io_conf.mode = GPIO_MODE_INPUT;
     //enable pull-up mode
     io_conf.pull_up_en = 1;
     gpio_config(&io_conf);
     //create a queue to handle gpio event from isr
-    gpio_evt_queue = xQueueCreate(10, sizeof(uint8_t));
-    touch_queue = xQueueCreate(64, sizeof(xy_data));
+    gpio_evt_queue = xQueueCreate(TOUCH_QUEUE_LENGTH, sizeof(uint8_t));
+    touch_queue = xQueueCreate(TOUCH_QUEUE_LENGTH, sizeof(xy_data));
 
     //i2c_master_init(); // I2C is already started by LVGL
 
@@ -355,7 +359,6 @@ void tma445_init(uint8_t dev_addr)
      
     // Start I2C scanner task
     //xTaskCreatePinnedToCore(i2cscanner, TAG, configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
-    resetTouch();
     touchStuff();
 }
 
@@ -378,6 +381,7 @@ bool tma445_read(lv_indev_drv_t *drv, lv_indev_data_t *data)
         data->point.x = -1;
         data->point.y = -1;
     }
+    vTaskDelay(pdMS_TO_TICKS(1));
     return false;
 }
     

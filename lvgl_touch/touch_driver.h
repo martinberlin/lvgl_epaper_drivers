@@ -32,8 +32,14 @@ extern "C" {
 #include "FT81x.h"
 #elif defined (CONFIG_LV_TOUCH_CONTROLLER_RA8875)
 #include "ra8875_touch.h"
+#elif defined (CONFIG_LV_TOUCH_CONTROLLER_L58)
+#include "l58.h"
 #elif defined (CONFIG_LV_TOUCH_CONTROLLER_GT911)
 #include "gt911.h"
+#elif defined (CONFIG_LV_TOUCH_CONTROLLER_TT21100)
+#include "tt21100.h"
+#elif defined (CONFIG_LV_TOUCH_CONTROLLER_TMA445)
+#include "tma445.h"
 #endif
 
 /*********************

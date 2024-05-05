@@ -99,7 +99,7 @@ idf_component_register(SRCS ${SOURCES}
 		       #CalEPD
 		       #sharp-lcd
 		       #espressif__esp_lcd_touch_gt911
-               espressif__esp_lcd_touch_tt21100
+               #espressif__esp_lcd_touch_tt21100
                touch_tma445
                        )
                        

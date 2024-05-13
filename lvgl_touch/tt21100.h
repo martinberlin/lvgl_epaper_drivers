@@ -1,7 +1,7 @@
-#ifndef __GT911_H
 /*
 * Copyright © 2024 Fasani Corp.
-
+*
+* This is the touch driver that Eink Kaleido panel has for the models v1 & v2
 * Permission is hereby granted, free of charge, to any person obtaining a copy of this 
 * software and associated documentation files (the “Software”), to deal in the Software 
 * without restriction, including without limitation the rights to use, copy, modify, merge, 
@@ -19,8 +19,6 @@
 * SOFTWARE.
 */
 
-#define __GT911_H
-
 #include <stdint.h>
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
 #include "lvgl.h"
@@ -33,11 +31,11 @@ extern "C" {
 #endif
 
 /**
-  * @brief  Initialize for GT911 communication via I2C
+  * @brief  Initialize for TT21100 communication via I2C
   * @param  dev_addr: Device address on communication Bus (I2C slave address of GT911).
   * @retval None
   */
-void gt911_init(uint8_t dev_addr);
+void tt21100_init(uint8_t dev_addr);
 
 /**
   * @brief  Get the touch screen X and Y positions values. Ignores multi touch
@@ -45,9 +43,8 @@ void gt911_init(uint8_t dev_addr);
   * @param  data: Store data here
   * @retval Always false
   */
-bool gt911_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
+bool tt21100_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
 
 #ifdef __cplusplus
 }
 #endif
-#endif /* __GT911_H */

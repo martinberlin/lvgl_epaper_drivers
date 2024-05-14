@@ -3,6 +3,7 @@
 #include "freertos/task.h"
 #include "epdiy_epaper.h"
 #include "epdiy.h"
+#include "string.h"
 
 EpdiyHighlevelState hl;
 uint16_t flushcalls = 0;
@@ -24,13 +25,47 @@ void epdiy_init(void)
   epd_set_vcom(1760);
   hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
   framebuffer = epd_hl_get_framebuffer(&hl);
+
+  // Declaring our own 8BPP buffer: Does not work correctly
+  //framebuffer = (uint8_t *)heap_caps_malloc(epd_height()*epd_width()/2, MALLOC_CAP_SPIRAM);
+   
   epd_poweron();
   // Clear all display in initialization to remove any ghosts
   epd_fullclear(&hl, temperature);
 }
 
-// Larry Kaleido take that used to work correctly for RGB232
-void buf_copy_to_framebuffer_Kaleido(EpdRect image_area, const uint8_t *image_data) {
+/**
+ * @brief could not make LV_COLOR_FORMAT_L8 = monochrome 1BPP work
+ * 
+ * @param image_area 
+ * @param image_data 
+ */
+void buf_copy_to_framebuffer_1bpp(EpdRect image_area, const uint8_t *image_data)
+{
+  uint16_t data_idx = 0;
+
+  for (uint16_t y = image_area.y; y < image_area.height+image_area.y; y++) {
+    for (uint16_t x = image_area.x; x < image_area.width+image_area.x; x+=8) {
+      uint8_t bit[8];
+      bit[0] = ((image_data[data_idx]>>0)&1); // pixel 1
+      bit[1] = ((image_data[data_idx]>>1)&1); // pixel 2 -> 1st framebuffer(FB) pos
+      bit[2] = ((image_data[data_idx]>>2)&1); // 3
+      bit[3] = ((image_data[data_idx]>>3)&1); // 4 2nd FB pos
+      bit[4] = ((image_data[data_idx]>>4)&1); // 5
+      bit[5] = ((image_data[data_idx]>>5)&1); // 6 3rd FB pos
+      bit[6] = ((image_data[data_idx]>>6)&1); // 7
+      bit[7] = ((image_data[data_idx]>>7)&1); // 8 4th FB pos
+      for (uint8_t fp=0; fp<8; fp++) {
+        uint8_t color = (bit[fp]==0) ? 255 : 0;
+        epd_draw_pixel(x+fp, y, color, framebuffer);
+      }
+      data_idx++;
+    }
+  }
+}
+
+// Larry Kaleido take that used to work correctly for RGB233, now in RGB332
+void buf_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data) {
   assert(framebuffer != NULL);
   int x, xx = image_area.x;
   int y, yy = image_area.y;
@@ -64,53 +99,27 @@ void buf_copy_to_framebuffer_Kaleido(EpdRect image_area, const uint8_t *image_da
             s += 2;
        } // for x
    } // for y
-}
+   }
 
-/* A copy from epd_copy_to_framebuffer with temporary lenght prediction */
-  // Best though: Use L8 and also epdiy MODE_PACKING_8PPB 1bpp buffer (Both 8 pixels in a byte)
-  // LV_COLOR_FORMAT_L8 full monochrome 1bpp, need to take that and convert it to epdiy framebuffer
-  // ^ BUT... Could not make work L8 mode :(
-void buf_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data)
+/* This would be the IDEAL way to handle it, just memcpy line per line in epdiy buffer */
+void buf_copy_to_framebuffer_directCC(EpdRect image_area, const uint8_t *image_data)
 {
-  // This is mostly crap. A better start is Larry Kaleido version
   uint16_t data_idx = 0;
+  // Copy entire lines in epdiy buffer
+  uint8_t *buf_ptr;
   for (uint16_t y = image_area.y; y < image_area.height+image_area.y; y++) {
-    for (uint16_t x = image_area.x; x < image_area.width+image_area.x/8; x++)
-    {
-      // Extracts bit's from a supposedly 8BPP image
-      // with the mission to fit in a 4BPP epdiy framebuffer
-      uint8_t bit[8];
-      bit[0] = ((image_data[data_idx]>>0)&1); // pixel 0
-      bit[1] = ((image_data[data_idx]>>1)&1); // pixel 1 -> 1st framebuffer(FB) pos
-      bit[2] = ((image_data[data_idx]>>2)&1); // 0
-      bit[3] = ((image_data[data_idx]>>3)&1); // 1 2nd FB pos
-      bit[4] = ((image_data[data_idx]>>4)&1); // 0
-      bit[5] = ((image_data[data_idx]>>5)&1); // 1 3rd FB pos
-      bit[6] = ((image_data[data_idx]>>6)&1); // 0
-      bit[7] = ((image_data[data_idx]>>7)&1); // 1 4th FB pos
-      data_idx++;
-      //printf("%x ", image_data[i]); // Byte to bit conversion seems to be OK:
-      //printf("%d%d%d%d%d%d%d%d\n",bit[7],bit[6],bit[5],bit[4],bit[3],bit[2],bit[1],bit[0]);
-      
-      /**
-       * @brief What I don't think is OK that even at the beginning where image_data is 
-       * supposed to be all white, there are different black points, why?
-       * I don't get it.
-       */
-      for (uint8_t fp=1; fp<=8; fp++) {
-        // In epdiy 255 makes a pixel full white, 0 full black.
-        // This is of course crap, but you get the idea:
-        uint8_t color = (bit[fp-1]==0) ? 0 : 255;
+    #ifdef DEBUG_IMG_DATA
+    //Byte to bit conversion seems to be OK:
+    printf("%x %d%d%d%d%d%d%d%d\n",image_data[i],bit[7],bit[6],bit[5],bit[4],bit[3],bit[2],bit[1],bit[0]);
+    #endif
+    buf_ptr = &framebuffer[y * epd_width() / 2 + image_area.x / 2];
+    memcpy(buf_ptr, &image_data[data_idx],image_area.width/2);
 
-        // This should actually fill all updated parts with a black pixel changing color to 0
-        epd_draw_pixel((x*8)+fp, y, color, framebuffer);
-      }
-    }
+    data_idx = y * (image_area.width/2);
   }
-  //printf("\nTotal image_data bytes: %d\n", data_idx);
   // Debug dump a line in the image buffer
   //ESP_LOG_BUFFER_HEXDUMP("BUF", image_data, image_area.width/8, ESP_LOG_INFO);
-  }
+}
 
 /* Required by LVGL. Sends the color_map to the screen with a partial update  */
 void epdiy_flush(lv_display_t *drv, const lv_area_t *area, uint8_t * color_map)

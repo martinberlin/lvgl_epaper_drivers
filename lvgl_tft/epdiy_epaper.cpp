@@ -34,36 +34,6 @@ void epdiy_init(void)
   epd_fullclear(&hl, temperature);
 }
 
-/**
- * @brief could not make LV_COLOR_FORMAT_L8 = monochrome 1BPP work
- * 
- * @param image_area 
- * @param image_data 
- */
-void buf_copy_to_framebuffer_1bpp(EpdRect image_area, const uint8_t *image_data)
-{
-  uint16_t data_idx = 0;
-
-  for (uint16_t y = image_area.y; y < image_area.height+image_area.y; y++) {
-    for (uint16_t x = image_area.x; x < image_area.width+image_area.x; x+=8) {
-      uint8_t bit[8];
-      bit[0] = ((image_data[data_idx]>>0)&1); // pixel 1
-      bit[1] = ((image_data[data_idx]>>1)&1); // pixel 2 -> 1st framebuffer(FB) pos
-      bit[2] = ((image_data[data_idx]>>2)&1); // 3
-      bit[3] = ((image_data[data_idx]>>3)&1); // 4 2nd FB pos
-      bit[4] = ((image_data[data_idx]>>4)&1); // 5
-      bit[5] = ((image_data[data_idx]>>5)&1); // 6 3rd FB pos
-      bit[6] = ((image_data[data_idx]>>6)&1); // 7
-      bit[7] = ((image_data[data_idx]>>7)&1); // 8 4th FB pos
-      for (uint8_t fp=0; fp<8; fp++) {
-        uint8_t color = (bit[fp]==0) ? 255 : 0;
-        epd_draw_pixel(x+fp, y, color, framebuffer);
-      }
-      data_idx++;
-    }
-  }
-}
-
 // Larry Kaleido take that used to work correctly for RGB233, now in RGB332
 void buf_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data) {
   assert(framebuffer != NULL);
@@ -71,7 +41,7 @@ void buf_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data) {
   int y, yy = image_area.y;
   int w = image_area.width;
   int h = image_area.height;
-  const uint8_t ucCLRMask[3] = {0xc0,0x38,0x7};
+  const uint8_t ucCLRMask = 0xc0;
   uint8_t uc, *s, *d;
 // source data is one byte per pixel (RGB233)
    for (y=yy; y<(yy + h); y++) {
@@ -81,9 +51,8 @@ void buf_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data) {
        x = xx;
        if (x & 1) {
           uc = d[0] & 0xf0; // special case for odd starting pixel
-          if (s[0] & ucCLRMask[i])
+          if (s[0] & ucCLRMask)
               uc |= 0xf;
-          i++;
           s++;
           *d++ = uc;
           x++;
@@ -91,10 +60,10 @@ void buf_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data) {
        }
        for (; x<(xx + w); x+=2) { // work 2 pixels at a time
             uc = 0;
-            if (s[0] & ucCLRMask[i]) uc |= 0xf;
-            i++; if (i >= 3) i -= 3;
-            if (s[1] & ucCLRMask[i]) uc |= 0xf0;
-            i++; if (i >= 3) i -= 3;
+            if (s[0] & ucCLRMask) uc |= 0xf;
+
+            if (s[1] & ucCLRMask) uc |= 0xf0;
+ 
             *d++ = uc;
             s += 2;
        } // for x
@@ -168,33 +137,4 @@ void epdiy_flush(lv_display_t *drv, const lv_area_t *area, uint8_t * color_map)
 
 void epdiy_release_cb(lv_event_t * e) {
   printf("epdiy_release_cb\n");
-}
-
-/*
- * Called for each pixel. Designed with the idea to fill the buffer directly, not to set each pixel, see LVGL Forum (buf_area_to_framebuffer)
- * Setting buf here comes as color_map in epdiy_flush
- */
-void epdiy_set_px_cb(lv_display_t *disp_drv, uint8_t *buf,
-                     lv_coord_t buf_w, lv_coord_t x, lv_coord_t y,
-                     lv_color_t color, lv_opa_t opa)
-{
-  // Test using RGB232. NOT used in v9
-  /*
-  int16_t epd_color = 255;
-  if ((int16_t)color.full < 254)
-  {
-    epd_color = (updateMode == MODE_DU) ? 0 : (int16_t)color.full / 3;
-  }
-
-  // Instead of using epd_draw_pixel: Set pixel directly in *buf that comes afterwards in flush as *color_map
-  uint16_t idx = (int16_t)y * buf_w / 2 + (int16_t)x / 2;
-  if (x % 2)
-  {
-    buf[idx] = (buf[idx] & 0x0F) | (epd_color & 0xF0);
-  }
-  else
-  {
-    buf[idx] = (buf[idx] & 0xF0) | (epd_color >> 4);
-  } 
-  */
 }

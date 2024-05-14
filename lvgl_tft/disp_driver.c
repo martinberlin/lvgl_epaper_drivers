@@ -12,6 +12,8 @@ void disp_driver_init(void)
     ili9341_init();
 #elif defined CONFIG_LV_EPAPER_EPDIY_DISPLAY_CONTROLLER
     epdiy_init();
+#elif defined CONFIG_LV_EPAPER_EPDIY_KALEIDO_DISPLAY_CONTROLLER
+    epdiy_init();
 #elif defined CONFIG_LV_EPAPER_CALEPD_DISPLAY_CONTROLLER
     calepd_init();
 #elif defined CONFIG_LV_SHARP_DISPLAY_CONTROLLER
@@ -55,6 +57,8 @@ void disp_driver_flush(lv_display_t * drv, const lv_area_t * area, uint8_t * col
     ili9341_flush(drv, area, color_map);
 #elif defined CONFIG_LV_EPAPER_EPDIY_DISPLAY_CONTROLLER
     epdiy_flush(drv, area, color_map);
+#elif defined CONFIG_LV_EPAPER_EPDIY_KALEIDO_DISPLAY_CONTROLLER
+    epdiy_flush(drv, area, color_map);
 #elif defined CONFIG_LV_EPAPER_CALEPD_DISPLAY_CONTROLLER
     calepd_flush(drv, area, color_map); 
 #elif defined CONFIG_LV_SHARP_DISPLAY_CONTROLLER
@@ -92,9 +96,16 @@ void disp_driver_flush(lv_display_t * drv, const lv_area_t * area, uint8_t * col
 #endif
 }
 
+/**
+ * @brief so far not used
+ * 
+ * @param e 
+ */
 void disp_release_cb(lv_event_t * e)
 {
     #if defined CONFIG_LV_EPAPER_EPDIY_DISPLAY_CONTROLLER
+      epdiy_release_cb(e);
+    #elif defined CONFIG_LV_EPAPER_EPDIY_KALEIDO_DISPLAY_CONTROLLER
       epdiy_release_cb(e);
     #endif
 }
@@ -117,6 +128,17 @@ void disp_driver_rounder(lv_display_t * disp_drv, lv_area_t * area)
 #endif
 }
 
+/**
+ * @deprecated in LVGL >= 9.0
+ * 
+ * @param disp_drv 
+ * @param buf 
+ * @param buf_w 
+ * @param x 
+ * @param y 
+ * @param color 
+ * @param opa 
+ */
 void disp_driver_set_px(lv_display_t * disp_drv, uint8_t * buf, lv_coord_t buf_w, lv_coord_t x, lv_coord_t y,
     lv_color_t color, lv_opa_t opa) 
 {

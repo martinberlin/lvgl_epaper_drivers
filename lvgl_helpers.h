@@ -51,7 +51,8 @@ extern "C" {
 // IMPORTANT: This will render the screen in 8 times (more and it skips lines, supposedly limited by PSRAM speed)
 #elif defined (CONFIG_LV_EPAPER_EPDIY_DISPLAY_CONTROLLER)
   #define DISP_BUF_SIZE LV_HOR_RES_MAX*(LV_VER_RES_MAX/ 8)
-
+#elif defined (CONFIG_LV_EPAPER_EPDIY_KALEIDO_DISPLAY_CONTROLLER)
+  #define DISP_BUF_SIZE LV_HOR_RES_MAX*(LV_VER_RES_MAX/ 8)
 #elif defined (CONFIG_LV_EPAPER_CALEPD_DISPLAY_CONTROLLER)
 #define DISP_BUF_SIZE  LV_HOR_RES_MAX*(LV_VER_RES_MAX/10)
 #elif defined (CONFIG_LV_SHARP_DISPLAY_CONTROLLER)

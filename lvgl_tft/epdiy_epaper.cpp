@@ -70,22 +70,9 @@ void buf_copy_to_framebuffer(EpdRect image_area, const uint8_t *image_data) {
    } // for y
    }
 
-/* This would be the IDEAL way to handle it, just memcpy line per line in epdiy buffer */
-void buf_copy_to_framebuffer_directCC(EpdRect image_area, const uint8_t *image_data)
+/** Make a 2nd faster take ? */
+void buf_copy_to_framebuffer_L8(EpdRect image_area, const uint8_t *image_data)
 {
-  uint16_t data_idx = 0;
-  // Copy entire lines in epdiy buffer
-  uint8_t *buf_ptr;
-  for (uint16_t y = image_area.y; y < image_area.height+image_area.y; y++) {
-    #ifdef DEBUG_IMG_DATA
-    //Byte to bit conversion seems to be OK:
-    printf("%x %d%d%d%d%d%d%d%d\n",image_data[i],bit[7],bit[6],bit[5],bit[4],bit[3],bit[2],bit[1],bit[0]);
-    #endif
-    buf_ptr = &framebuffer[y * epd_width() / 2 + image_area.x / 2];
-    memcpy(buf_ptr, &image_data[data_idx],image_area.width/2);
-
-    data_idx = y * (image_area.width/2);
-  }
   // Debug dump a line in the image buffer
   //ESP_LOG_BUFFER_HEXDUMP("BUF", image_data, image_area.width/8, ESP_LOG_INFO);
 }

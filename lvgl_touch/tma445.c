@@ -52,7 +52,7 @@ QueueHandle_t touch_queue = NULL;
 #define TOUCH_ADDR 0x24
 // Adjust to your desired level. Too large might record many seconds which is bad for UX
 #define TOUCH_QUEUE_LENGTH 15
-
+#define TOUCH_HEIGHT 758
 #define CY_REG_BASE         	0x00
 #define GET_NUM_TOUCHES(x)     	((x) & 0x0F)
 #define GET_TOUCH1_ID(x)       	(((x) & 0xF0) >> 4)
@@ -115,10 +115,8 @@ struct cyttsp_bootloader_data {
 	uint8_t cid_1;
 	uint8_t cid_2;
 };
-
-static const char *LOGG = "LOG";
-
-static void i2c_master_init() {
+// Not used here since LVGL starts I2C already
+/* static void i2c_master_init() {
     i2c_config_t conf = { };
     conf.mode = I2C_MODE_MASTER;
     conf.sda_io_num = CONFIG_LV_TOUCH_I2C_SDA;
@@ -128,7 +126,7 @@ static void i2c_master_init() {
     conf.master.clk_speed = 100000;
     i2c_param_config(I2C_NUM_0, &conf);
     i2c_driver_install(I2C_NUM_0, conf.mode, 0, 0, 0);
-}
+} */
 
 static esp_err_t i2c_master_read_slave_reg(i2c_port_t i2c_num, uint8_t i2c_addr, uint8_t i2c_reg, uint8_t* data_rd, size_t size) {
     if (size == 0) {
@@ -182,32 +180,6 @@ esp_err_t i2c_write_reg( uint8_t reg, uint8_t *pdata, uint8_t count ) {
 }
 
 static QueueHandle_t gpio_evt_queue = NULL;
-
-static int _cyttsp_hndshk_n_write(uint8_t write_back)
-{
-	int retval = -1;
-	uint8_t hst_mode[1];
-	uint8_t cmd[1];
-	uint8_t tries = 0;
-	while (retval < 0 && tries++ < 20){
-		DELAY(5);
-        retval = i2c_read_reg(0x00, &hst_mode, sizeof(hst_mode));
-        if(retval < 0) {	
-			printf("%s: bus read fail on handshake ret=%d, retries=%d\n",
-				__func__, retval, tries);
-			continue;
-		}
-        cmd[0] = hst_mode[0] & CY_HNDSHK_BIT ?
-		write_back & ~CY_HNDSHK_BIT :
-		write_back | CY_HNDSHK_BIT;
-        retval = i2c_write_reg(CY_REG_BASE, &cmd, sizeof(cmd));
-        if(retval < 0)
-			printf("%s: bus write fail on handshake ret=%d, retries=%d\n",
-				__func__, retval, tries);
-    }
-    return retval;
-}
-
 // 317 cyttsp.c
 static int _cyttsp_hndshk()
 {
@@ -217,7 +189,7 @@ static int _cyttsp_hndshk()
 	uint8_t tries = 0;
 	while (retval < 0 && tries++ < 20){
 		DELAY(5);
-        retval = i2c_read_reg(0x00, &hst_mode, sizeof(hst_mode));
+        retval = i2c_read_reg(0x00, (uint8_t*)&hst_mode, sizeof(hst_mode));
         if(retval < 0) {	
 			printf("%s: bus read fail on handshake ret=%d, retries=%d\n",
 				__func__, retval, tries);
@@ -226,7 +198,7 @@ static int _cyttsp_hndshk()
         cmd[0] = hst_mode[0] & CY_HNDSHK_BIT ?
 		hst_mode[0] & ~CY_HNDSHK_BIT :
 		hst_mode[0] | CY_HNDSHK_BIT;
-        retval = i2c_write_reg(CY_REG_BASE, &cmd, sizeof(cmd));
+        retval = i2c_write_reg(CY_REG_BASE, (uint8_t*)&cmd, sizeof(cmd));
         if(retval < 0)
 			printf("%s: bus write fail on handshake ret=%d, retries=%d\n",
 				__func__, retval, tries);
@@ -248,7 +220,7 @@ static void touch_INT(void* arg)
             //printf("GPIO[%"PRIu32"] intr, val: %d\n", io_num, gpio_get_level(io_num));
             /* get event data from CYTTSP device */
             int retval;
-            retval = i2c_read_reg(CY_REG_BASE, &xy_data, sizeof(xy_data));
+            retval = i2c_read_reg(CY_REG_BASE, (uint8_t*) &xy_data, sizeof(xy_data));
             if (retval < 0) {
 		        printf("%s: Error, fail to read device on host interface bus\n", __func__);
             }
@@ -281,13 +253,13 @@ void touchStuff() {
     // soft reset
     esp_err_t err;
     uint8_t softres[] = {0x01};
-    err = i2c_write_reg(CY_REG_BASE, &softres, 1);
+    err = i2c_write_reg(CY_REG_BASE, (uint8_t*) &softres, 1);
     if (err != ESP_OK) {
         printf("i2c_write_reg CY_SOFT_RESET_MODE FAILED \n");
     }
     DELAY(50);
     // write sec_key
-    err = i2c_write_reg(CY_REG_BASE, &sec_key, sizeof(sec_key));
+    err = i2c_write_reg(CY_REG_BASE, (uint8_t*) &sec_key, sizeof(sec_key));
     if (err != ESP_OK) {
         printf("i2c_write_reg sec_key FAILED \n");
     }
@@ -300,7 +272,7 @@ void touchStuff() {
     struct cyttsp_bootloader_data  bl_data = {};
     do {
 		DELAY(20);
-        i2c_read_reg(CY_REG_BASE, &bl_data, sizeof(bl_data));
+        i2c_read_reg(CY_REG_BASE, (uint8_t*) &bl_data, sizeof(bl_data));
         uint8_t *bl_data_p = (uint8_t *)&(bl_data);
         /* for (int i = 0; i < sizeof(struct cyttsp_bootloader_data); i++) {
 			printf("bl_data[%d]=0x%x\n", i, bl_data_p[i]);
@@ -318,8 +290,9 @@ void touchStuff() {
 	memset(&(xy_data), 0, sizeof(xy_data));
     /* wait for TTSP Device to complete switch to Operational mode */
 	DELAY(20);
-    retval = i2c_read_reg(CY_REG_BASE, &xy_data, sizeof(xy_data));
-    printf("%s: hstmode:0x%x tt_mode:0x%x tt_stat:0x%x ", __func__, xy_data.hst_mode, xy_data.tt_mode, xy_data.tt_stat);
+    retval = i2c_read_reg(CY_REG_BASE, (uint8_t*) &xy_data, sizeof(xy_data));
+    printf("%s: hstmode:0x%x tt_mode:0x%x tt_stat:0x%x RET_read:%d", 
+    __func__, xy_data.hst_mode, xy_data.tt_mode, xy_data.tt_stat, retval);
 }
 
 /**
@@ -373,7 +346,7 @@ bool tma445_read(lv_indev_t *drv, lv_indev_data_t *data)
     /* Read from the touch Queue */
     if( xQueueReceive(touch_queue, &xy_data, ( TickType_t ) 0 ) ) {
         data->state = LV_INDEV_STATE_PR;
-        data->point.y = 768 - xy_data.x1;
+        data->point.y = TOUCH_HEIGHT - xy_data.x1;
         data->point.x = xy_data.y1;
         printf("qR X:%d Y:%d\n", (int)data->point.x, (int)data->point.y);
     } else {
@@ -385,4 +358,3 @@ bool tma445_read(lv_indev_t *drv, lv_indev_data_t *data)
     return false;
 }
     
-

@@ -1,4 +1,4 @@
-#ifndef __TMA445_H
+#ifndef __TMA340_H
 /*
 * Copyright © 2024 Fasani Corp. & https://github.com/ddB0515
 
@@ -19,7 +19,7 @@
 * SOFTWARE.
 */
 
-#define __TMA445_H
+#define __TMA340_H
 
 #include <stdint.h>
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
@@ -37,7 +37,7 @@ extern "C" {
   * @param  dev_addr: Device address on communication Bus (I2C slave address of GT911).
   * @retval None
   */
-void tma445_init(uint8_t dev_addr);
+void tma340_init(uint8_t dev_addr);
 
 /**
   * @brief  Get the touch screen X and Y positions values. Ignores multi touch
@@ -45,7 +45,7 @@ void tma445_init(uint8_t dev_addr);
   * @param  data: Store data here
   * @retval Always false
   */
-bool tma445_read(lv_indev_t *drv, lv_indev_data_t *data);
+bool tma340_read(lv_indev_t *drv, lv_indev_data_t *data);
 
 #ifdef __cplusplus
 }

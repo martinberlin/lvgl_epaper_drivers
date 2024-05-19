@@ -18,6 +18,8 @@ void touch_driver_init(void)
     gt911_init(0x5d);
 #elif defined (CONFIG_LV_TOUCH_CONTROLLER_TT21100)
     tt21100_init(0x24);
+#elif defined (CONFIG_LV_TOUCH_CONTROLLER_TMA340)
+    tma340_init(0x24);
 #elif defined (CONFIG_LV_TOUCH_CONTROLLER_TMA445)
     tma445_init(0x24);
 #elif defined (CONFIG_LV_TOUCH_CONTROLLER_STMPE610)
@@ -45,6 +47,8 @@ bool touch_driver_read(lv_indev_t *drv, lv_indev_data_t *data)
     res = gt911_read(drv, data);
 #elif defined (CONFIG_LV_TOUCH_CONTROLLER_TT21100)
     res = tt21100_read(drv, data);
+#elif defined (CONFIG_LV_TOUCH_CONTROLLER_TMA340)
+    res = tma340_read(drv, data);
 #elif defined (CONFIG_LV_TOUCH_CONTROLLER_TMA445)
     res = tma445_read(drv, data);
 #elif defined (CONFIG_LV_TOUCH_CONTROLLER_STMPE610)

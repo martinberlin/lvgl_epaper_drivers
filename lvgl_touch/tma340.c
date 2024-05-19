@@ -180,32 +180,6 @@ esp_err_t i2c_write_reg( uint8_t reg, uint8_t *pdata, uint8_t count ) {
 }
 
 static QueueHandle_t gpio_evt_queue = NULL;
-
-static int _cyttsp_hndshk_n_write(uint8_t write_back)
-{
-	int retval = -1;
-	uint8_t hst_mode[1];
-	uint8_t cmd[1];
-	uint8_t tries = 0;
-	while (retval < 0 && tries++ < 20){
-		DELAY(5);
-        retval = i2c_read_reg(0x00, &hst_mode, sizeof(hst_mode));
-        if(retval < 0) {	
-			printf("%s: bus read fail on handshake ret=%d, retries=%d\n",
-				__func__, retval, tries);
-			continue;
-		}
-        cmd[0] = hst_mode[0] & CY_HNDSHK_BIT ?
-		write_back & ~CY_HNDSHK_BIT :
-		write_back | CY_HNDSHK_BIT;
-        retval = i2c_write_reg(CY_REG_BASE, &cmd, sizeof(cmd));
-        if(retval < 0)
-			printf("%s: bus write fail on handshake ret=%d, retries=%d\n",
-				__func__, retval, tries);
-    }
-    return retval;
-}
-
 // 317 cyttsp.c
 static int _cyttsp_hndshk()
 {
@@ -314,12 +288,6 @@ void touchStuff() {
     struct cyttsp_xydata xy_data;
     printf("%s set operational mode\n",__func__);
 	memset(&(xy_data), 0, sizeof(xy_data));
-    retval = _cyttsp_hndshk_n_write(cmd);
-	if (retval < 0) {
-		printf("%s: Failed writing block data, err:%d\n",
-			__func__, retval);
-    }
-    
     /* wait for TTSP Device to complete switch to Operational mode */
 	DELAY(20);
     retval = i2c_read_reg(CY_REG_BASE, (uint8_t*) &xy_data, sizeof(xy_data));
@@ -333,7 +301,7 @@ void touchStuff() {
  * IMPORTANT: Adjust here to your panel resolution this is by default
  *            set to the Kindle 6" paperwhite x_max/y_max
  */
-void tma445_init(uint8_t dev_addr)
+void tma340_init(uint8_t dev_addr)
 {
     // It seems there is no need to RESET
     #if TS_RES != -1
@@ -373,7 +341,7 @@ void tma445_init(uint8_t dev_addr)
  * @param  data: Store data here
  * @retval Always false
  */
-bool tma445_read(lv_indev_t *drv, lv_indev_data_t *data)
+bool tma340_read(lv_indev_t *drv, lv_indev_data_t *data)
 {
     /* Read from the touch Queue */
     if( xQueueReceive(touch_queue, &xy_data, ( TickType_t ) 0 ) ) {

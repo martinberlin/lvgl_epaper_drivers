@@ -383,8 +383,6 @@ bool tma445_read(lv_indev_t *drv, lv_indev_data_t *data)
         printf("qR X:%d Y:%d\n", (int)data->point.x, (int)data->point.y);
     } else {
         data->state = LV_INDEV_STATE_REL;
-        data->point.x = -1;
-        data->point.y = -1;
     }
     vTaskDelay(pdMS_TO_TICKS(1));
     return false;
